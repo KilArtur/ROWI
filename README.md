@@ -11,3 +11,4 @@
 Использовать надежный API для получения актуальных курсов валют, в данном случае ExchangeRate-API
 ## Результат
 Бот был перенесен на хостинг [Railway](https://railway.app) для непрерывной работы
+Telegram bot доступен по [ссылке](https://t.me/rowicurrencybot)
