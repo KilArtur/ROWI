@@ -11,6 +11,13 @@ from dotenv import load_dotenv
 
 # Функция старта
 def start(update: Update, context: CallbackContext) -> None:
+    """
+    Функция обрабатывает команду /start и отправляет пользователю приветственное сообщение
+
+    :param update: Объект, содержащий информацию о текущем обновлении
+    :param context: Контекст, содержащий данные о состоянии и бот API
+    :return: None
+    """
     update.message.reply_text(
         'Привет! Я валютный бот. Используйте команду /rate [currency], чтобы узнать текущий курс валюты к рублю.\n'
         'Поддерживаемые базовые валюты: USD, EUR'
@@ -18,6 +25,13 @@ def start(update: Update, context: CallbackContext) -> None:
 
 # Функция для получения курса валют
 def rate(update: Update, context: CallbackContext) -> None:
+    """
+    Функция обрабатывает команду /rate и отправляет пользователю текущий курс указанной валюты к рублю
+
+    :param update: Объект, содержащий информацию о текущем обновлении
+    :param context: Контекст, содержащий данные о состоянии и бот API
+    :return: None
+    """
     if len(context.args) != 1:
         update.message.reply_text('Пожалуйста, укажите одну валюту. Например: /rate USD')
         return
