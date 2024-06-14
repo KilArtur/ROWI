@@ -1,10 +1,12 @@
 import logging
 import os
 import sys
+import re
 import json
-
+import telegram
 
 import requests
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
@@ -14,6 +16,7 @@ from telegram.ext import (
     Filters,
     CallbackContext
 )
+
 
 # Команда /start
 def start(update: Update, context: CallbackContext) -> None:
@@ -49,13 +52,6 @@ def check_and_split(product: str) -> (str, int):
 
 # Команда /search
 def search(update: Update, context: CallbackContext) -> None:
-    """
-    Функция для выполнения поискового запроса и отправки результата пользователю
-
-    :param update: объект с обновлением от Telegram
-    :param context: объект для обработки контекста
-    """
-    # Получаем текст сообщения пользователя
     user_message = update.message.text.strip()
     command_parts = user_message.split(maxsplit=1)
 
@@ -63,7 +59,6 @@ def search(update: Update, context: CallbackContext) -> None:
         update.message.reply_text("Неверный формат запроса. Пример: /search велосипед детский 145296859")
         return
 
-    # Извлекаем название товара и артикул
     name, article = check_and_split(command_parts[1])
 
     if name is None or article is None:
@@ -76,7 +71,6 @@ def search(update: Update, context: CallbackContext) -> None:
 
     # Ограничение в первые 50 страниц
     for number_page in range(1, 51):
-        # Параметры запроса
         params = {
             'ab_testing': 'false',
             'appType': '1',
@@ -91,43 +85,34 @@ def search(update: Update, context: CallbackContext) -> None:
             'uclusters': '0'
         }
 
-        # Выполнение GET-запроса к API
         response = requests.get(API_URL, headers=headers, params=params)
 
-        # Проверка успешности запроса и печать JSON-данных
         if response.status_code == 200:
             try:
                 json_data = response.json()
-                # На каждой странице находятся всего лишь 100 товаров
-                for i in range(100):
-                    if json_data['data']['products'][i]['id'] == article:
-                        answer['page'] = params['page']
-                        answer['position'] = i + 1
-                        break  # Прерываем цикл, если нашли товар
+
+                if 'data' in json_data and 'products' in json_data['data']:
+                    products = json_data['data']['products']
+                    for i, product in enumerate(products, start=1):
+                        if product['id'] == article:
+                            answer['page'] = params['page']
+                            answer['position'] = i
+                            break
             except json.JSONDecodeError:
                 logger.warning('Ответ не является JSON')
         else:
             logger.error(f'Ошибка: {response.status_code}')
 
-    if answer['page'] is not None and answer['position'] is not None:
-        update.message.reply_text(f"Ваш продукт на странице {answer['page']}, месте {answer['position']}")
-    else:
-        update.message.reply_text("Продукт не найден.")
+        if answer['page'] is not None and answer['position'] is not None:
+            update.message.reply_text(f"Ваш продукт на странице {answer['page']}, месте {answer['position']}")
+            return
+
+    update.message.reply_text("Продукт не найден.")
 
 
 
 
 if __name__ == '__main__':
-    # Включаем логирование
-    logger = logging.getLogger(__name__)
-    handler = logging.StreamHandler(sys.stdout)
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
-
-    # Загрузка переменных окружения из .env файла
-    load_dotenv()
-    TOKEN = os.getenv('TOKEN')
-
     API_URL = 'https://search.wb.ru/exactmatch/ru/common/v5/search'
 
     headers = {
@@ -146,18 +131,29 @@ if __name__ == '__main__':
         "x-queryid": "qid82796597171809471720240613112848",
         "x-userid": "131290320"
     }
+    # Включаем логирование
+    logger = logging.getLogger(__name__)
+    handler = logging.StreamHandler(sys.stdout)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+
+    # Загрузка переменных окружения из .env файла
+    load_dotenv()
+    TOKEN = os.getenv('TOKEN')
 
     # Отладка
     logger.info(f"Используемый токен: {TOKEN}")
 
+    try:
+        updater = Updater(TOKEN)
+        dispatcher = updater.dispatcher
 
+        dispatcher.add_handler(CommandHandler("start", start))
+        dispatcher.add_handler(CommandHandler("search", search))
+        dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, search))
 
-    updater = Updater(TOKEN)
-    dispatcher = updater.dispatcher
-
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("search", search))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, search))
-
-    updater.start_polling()
-    updater.idle()
+        updater.start_polling()
+        updater.idle()
+    except telegram.error.InvalidToken:
+        logger.error("Предоставленный токен недействителен")
+        exit(1)
