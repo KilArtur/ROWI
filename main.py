@@ -1,12 +1,9 @@
 import logging
 import os
 import sys
-import re
 import json
 import telegram
-
 import requests
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
