@@ -9,10 +9,31 @@ handler = logging.StreamHandler(sys.stdout)
 logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
-name_and_article = 'кукла 170268597'
+name_and_article = 'нож складной туристический 156416424'
 
-name = str(name_and_article.split()[0])
-article = int(name_and_article.split()[-1])
+def check_and_split(product: str) -> (str, int):
+    """
+    Функция для проверки запроса на валидность и разделение на название товара и артикула
+
+    :param product: строка с товаром и артиклем
+    :return: название товара для поисковой строки и артикул
+    """
+    # Строка должна разбиваться минимум на 2 части
+    if len(product.split()) < 2:
+        logger.error(f"Запрос должен содерджать название товара и артикул через пробел")
+        return None
+
+    # последняя часть должна быть артикулом
+    try:
+        article = int(product.split()[-1])
+    except ValueError:
+        logger.error("Некорректный артикул. Артикул должен быть числом.")
+        return None
+
+    name = ' '.join(product.split()[:-1])
+    return name, article
+
+name, article = check_and_split(name_and_article)
 
 # Правильный URL для API, возвращающий JSON
 API_URL = 'https://search.wb.ru/exactmatch/ru/common/v5/search'
